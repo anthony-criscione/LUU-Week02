@@ -80,7 +80,7 @@ protected:
     double mileage = 0.0;
     double speed = 0.0;
     int year;
-    std::string make, model, name, spdUnits, distUnits;
+    std::string make, model, name;
     double baseSpeed = 1.0;
     double driveStep = 60.0;
 public:
@@ -88,26 +88,37 @@ public:
     virtual void drive(char inDir) = 0;
     virtual void outControls() = 0;
     //virtual void setName() = 0;
-    void accel(double amnt) { speed += amnt; }
+    virtual void accel(double amnt) = 0;
+    vehicle() {
+
+    }
     vehicle(std::string inMake, std::string inModel, int inYear) {
         make = inMake;
         model = inModel;
         year = inYear;
     }
-    virtual void outSpeed() { std::cout << "You are traveling at " << speed << " " << spdUnits << ".\n"; }
-    void outDist() { std::cout << "You have traveled " << mileage << " " << distUnits << ".\n"; }
+    virtual void outSpeed() = 0;
+    virtual void outDist() = 0;
 };
 
 class car : public vehicle {
-    using vehicle::vehicle;
+    
 private:
 
 protected:
     std::string spdUnits = "mph";
     std::string distUnits = "miles";
 public:
+    car(std::string inMake, std::string inModel, int inYear) {
+        make = inMake;
+        model = inModel;
+        year = inYear;
+    }
+    void accel(double amnt) override { speed += amnt; }
     void outInfo() override { std::cout << "You are driving a " << year << " " << make << " " << model << ".\n"; }
     void outControls() override { std::cout << "Accelerate on w, brake on s.\n"; }
+    void outSpeed() override { std::cout << "You are traveling at " << speed << " " << spdUnits << ".\n"; }
+    void outDist() override { std::cout << "You have traveled " << mileage << " " << distUnits << ".\n"; }
     void drive(char inDir) override {
         if (inDir == 'm') {
             std::cout << "Maintaining course.\n";
@@ -123,7 +134,7 @@ public:
             std::cout << inDir << " is currently unbound.\n";
             return;
         }
-        mileage = abs(speed) / driveStep;
+        mileage += abs(speed) / driveStep;
         outSpeed();
         outDist();
     }
@@ -131,20 +142,27 @@ public:
 };
 
 class boat : public vehicle {
-    using vehicle::vehicle;
+
 protected:
     double current = -4.0;
-    double speed = current;
+    double speed = 0;
     std::string spdUnits = "knots";
     std::string distUnits = "nautical miles";
 public:
+    boat(std::string inMake, std::string inModel, int inYear) {
+        make = inMake;
+        model = inModel;
+        year = inYear;
+    }
+    void accel(double amnt) override { speed += amnt; }
     void outInfo() override { std::cout << "You are at the helm of a " << year << " " << make << " " << model << ".\n"; }
     void outControls() override { std::cout << "Accelerate on w, brake on s.\n"; }
     void outSpeed() override {
         std::cout << "You are traveling at " << speed + current << " " << spdUnits << ".\n"; 
     }
+    void outDist() override { std::cout << "You have traveled " << mileage << " " << distUnits << ".\n"; }
     void outInstr() {
-        std::cout << "Your instruments read an engine output of " << speed << spdUnits << " and a sea current speed of " << current << spdUnits << " relative to your current heading.\n";
+        std::cout << "Your instruments read an engine output of " << speed << " " << spdUnits << " and a sea current speed of " << current << " " << spdUnits << " relative to your current heading.\n";
     }
     void drive(char inDir) override {
         if (inDir == 'm') {
@@ -162,7 +180,7 @@ public:
             std::cout << inDir << " is currently unbound.\n";
             return;
         }
-        mileage = abs(speed + current) / driveStep;
+        mileage += abs(speed + current) / driveStep;
         outInstr();
         outSpeed();
         outDist();
@@ -180,11 +198,11 @@ private:
         else if (alt > 0.0) {
             pitch = std::max(-pitchCap, pitch - stallPitchLoss);
             alt += (baseSpeed / driveStep) * pitch;
-            if (alt != 0.0) std::cout << "!! STALL !! STALL !!\n";
+            if (alt != 0.0) std::cout << "\n!! STALL !! STALL !!\n";
         }
         if (alt < 0.0) {
             if (std::abs(alt) > shockAbs || std::abs(pitch) > landingPitchTol) {
-                std::cout << "*fire-emoji* You have crashed *fire-emoji*\n";
+                std::cout << "\n*fire-emoji*   *fire-emoji*   *fire-emoji*\n" << "*fire-emoji* You have crashed *fire-emoji*\n" << "*fire-emoji*   *fire-emoji*   *fire-emoji*\n\n";
                 crashed = true;
             }
             else {
@@ -212,21 +230,20 @@ protected:
     std::string spdUnits = "km/h";
     std::string distUnits = "meters"; 
 public:
+    void accel(double amnt) override { speed += amnt; }
     void outInfo() override { std::cout << "You are piloting a " << year << " " << make << " " << model << ".\n"; }
     void outControls() override { std::cout << "Throttle on R/F, stick on W/S, m for maintaining course.\nInstrument readout on i, landing info on l.\n"; }
-
+    void outSpeed() override { std::cout << "You are traveling at " << speed << " " << spdUnits << ".\n"; }
+    void outDist() override { std::cout << "You have traveled " << mileage << " " << distUnits << ".\n"; }
     void outLandingInfo() {
         std::cout << "Your craft will generate lift at " << liftThresh << spdUnits << ", your shocks will absorb up to " <<
-                      shockAbs << distUnits << "height change, and will tolerate a pitch of up to  " << landingPitchTol << " (absolute value).\n";
+                      shockAbs << " " << distUnits << " height change, and will tolerate a pitch of up to  " << landingPitchTol << " (absolute value).\n";
         std::cout << "In current conditions, aircraft below their lift threshold will lose pitch at a rate of " << stallPitchLoss << " per input step.\n";
     }
 
-    void outSpeed() override {
-        std::cout << "You are traveling at " << speed << " " << spdUnits << ".\n";
-    }
     void outInstr() {
-        std::cout << "Your instruments read a speed of " << speed << spdUnits << " and an altitude of " << alt << distUnits << ".\n";
-        std::cout << "Your flaps are currently set to " << flapPitch << "and your craft has a pitch of " << pitch << "\n";
+        std::cout << "Your instruments read a speed of " << speed << spdUnits << " and an altitude of " << alt << " " << distUnits << ".\n";
+        std::cout << "Your flaps are currently set to " << flapPitch << " and your craft has a pitch of " << pitch << "\n";
     }
     void drive(char inDir) override {
         if (crashed) return;
@@ -250,7 +267,7 @@ public:
             accel(-baseSpeed);
             if (alt > 0.0) speed = std::max(0.0, speed);
         }
-        if (inDir == 'w') {
+        else if (inDir == 'w') {
             flapPitch = std::max(-capFlap, flapPitch - flapStep);
         }
         else if (inDir == 's') {
@@ -261,7 +278,7 @@ public:
             return;
         }
         movePlane();
-        mileage = abs(speed) / driveStep;
+        mileage += abs(speed) / driveStep;
         outInstr();
         outDist();
     }
@@ -311,46 +328,29 @@ int main()
         std::cout << "Invalid selection, input 1 to drive a car, 2 for a boat, 3 for a plane, or 4 to exit: ";
         std::cin >> selection;
     }
-    if (selection == 1) {
-        car drivable = car(std::string("Mazda"), std::string("2"), 2014);
-        drivable.outInfo();
-        drivable.outControls();
-        char driveInput;
-        std::cout << "Driving input (q to quit): ";
-        std::cin >> driveInput;
-        while (driveInput != 'q') {
-            drivable.drive(driveInput);
-            std::cout << "Driving input (q to quit): ";
-            std::cin >> driveInput;
-        }
+    vehicle* drivable;
+    char driveInput = '-';
+    if (selection == 4) return 0;
+    else if (selection == 1) {
+        drivable = new car(std::string("Mazda"), std::string("2"), 2014);    
     }
     else if (selection == 2) {
-        boat drivable = boat(std::string("Scrapyard"), std::string("Motorboat"), 2009);
-        drivable.outInfo();
-        drivable.outControls();
-        char driveInput;
-        std::cout << "Helm input (q to quit): ";
-        std::cin >> driveInput;
-        while (driveInput != 'q') {
-            drivable.drive(driveInput);
-            std::cout << "Helm input (q to quit): ";
-            std::cin >> driveInput;
-        }
+        drivable = new boat(std::string("Scrapyard"), std::string("Motorboat"), 2009);    
     }
-    else if (selection == 3) {
-        plane drivable = plane(std::string("NAA"), std::string("P-51"), 1940);
-        drivable.outInfo();
-        drivable.outControls();
-        char driveInput;
-        std::cout << "Helm input (q to quit): ";
-        std::cin >> driveInput;
-        while (driveInput != 'q') {
-            drivable.drive(driveInput);
-            std::cout << "Helm input (q to quit): ";
-            std::cin >> driveInput;
-        }
+    else {
+        drivable = new plane(std::string("NAA"), std::string("P-51"), 1940);  
     }
     
+    drivable->outInfo();
+    drivable->outControls();
+    std::cout << "Driving input (q to quit): ";
+    std::cin >> driveInput;
+    while (driveInput != 'q') {
+        drivable->drive(driveInput);
+        std::cout << "\nDriving input (q to quit): ";
+        std::cin >> driveInput;
+    }
+
     std::cout << "\n-----------------------\n";
 
 
